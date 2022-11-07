@@ -5,10 +5,16 @@ from collections import namedtuple
 import numpy as np
 from typing import List
 import cv2
+from sklearn.cluster import DBSCAN
 import tqdm
+import csv
+
+DBSCAN_MIN_SAMPLES = 5
+DBSCAN_EPS = 2
 
 PATH_SLICES = "./Output/Slices"
 PATH_BOUND = "./Output/Boundaries"
+PATH_CLUSTERS = "./Output/Clusters"
 PATH_TEMPLATE = "./template.png"
 
 PARAM_FILTER_THRESHOLD = 100
@@ -16,6 +22,34 @@ PARAM_BOUND_THRESHOLD = 5
 
 Point = namedtuple("Point", "x y")
 Size = namedtuple("Size", "width height")
+
+
+def write_images(slices: List[np.ndarray], base_dir: str, prefix: str):
+    """Writes a batch of images to an output path."""
+    dir_ = os.path.join(base_dir, prefix)
+    if not os.path.isdir(dir_):
+        os.makedirs(dir_)
+    for i, slice_ in enumerate(slices):
+        path = os.path.join(dir_, "{0:02d}.png".format(i))
+        cv2.imwrite(path, slice_)
+
+
+def write_cluster_counts(counts: List[int], base_dir: str, prefix: str):
+    """Writes the counts of clusters to a CSV at a specified path."""
+    # Generate output path
+    dir_ = os.path.join(base_dir, prefix)
+    if not os.path.isdir(dir_):
+        os.makedirs(dir_)
+    path = os.path.join(dir_, "counts.csv")
+
+    # Prepare output
+    rows = zip([f"{i:02d}" for i in range(len(counts))], counts)
+
+    # Write to CSV
+    with open(path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["SliceNumber", "ClusterCount"])
+        writer.writerows(rows)
 
 
 def get_filtered_slices(file: str, template: np.ndarray) -> List[np.ndarray]:
@@ -96,14 +130,63 @@ def draw_boundaries(images: List[np.ndarray]):
                              thickness=1, lineType=cv2.LINE_AA)
 
 
-def write_images(slices: List[np.ndarray], base_dir: str, prefix: str):
-    """Writes a batch of images to an output path."""
-    for i, slice_ in enumerate(slices):
-        dir_ = os.path.join(base_dir, prefix)
-        if not os.path.isdir(dir_):
-            os.makedirs(dir_)
-        path = os.path.join(dir_, "{0:02d}.png".format(i))
-        cv2.imwrite(path, slice_)
+def cluster(image_: np.ndarray, alg: DBSCAN) -> (int, np.ndarray):
+    """Detects clusters and returns a filtered image and the count of large
+    clusters.
+
+    This functions extracts non-gray pixels, performs clustering using DBScan
+    and re-maps the clustered coordinates onto the base image, acting as a
+    binary mask. The count of all clusters larger than 135 pixels is also
+    calculated. The original image is not modified.
+
+    Args:
+        image_: A single image.
+        alg: An instance of a DBSCAN algorithm object.
+    """
+    # Initialize the output image.
+    image_clustered_ = np.zeros(image_.shape, dtype='uint8')
+
+    # Extract colored points.
+    coordinates = []
+    for i, row in enumerate(image_):
+        for j, px in enumerate(row):
+            b, g, r = px
+            if not (b == g == r) and px.sum() > 5:
+                coordinates.append([i, j])
+
+    # Perform clustering
+    if len(coordinates) < 5:
+        return 0, image_clustered_
+    clustering = alg.fit(coordinates)
+
+    # Group the clusters
+    n_clusters = np.max(clustering.labels_) + 1
+    clusters_ = [[] for _ in range(n_clusters)]
+    for coord, label in zip(coordinates, clustering.labels_):
+        if label != -1:
+            clusters_[label].append(coord)
+
+    # Count and store valid clusters
+    valid = [cluster_ for cluster_ in clusters_ if len(cluster_) > 135]
+
+    # Draw all clusters
+    for cluster_ in clusters_:
+        for point in cluster_:
+            i, j = point
+            image_clustered_[i, j, :] = image_[i, j, :]
+
+    return len(valid), image_clustered_
+
+
+def get_clusters(images_: List[np.ndarray], alg: DBSCAN) -> (List[int],
+                                                             List[np.ndarray]):
+    images_clustered_ = []
+    counts_ = []
+    for i, image_ in enumerate(images_):
+        count_, image_clustered = cluster(image_, alg)
+        images_clustered_.append(image_clustered)
+        counts_.append(count_)
+    return counts_, images_clustered_
 
 
 def main():
@@ -124,9 +207,11 @@ def main():
         images = get_filtered_slices(file, template)
         write_images(images, PATH_SLICES, prefix)
 
-        # Detect and draw boundaries
-        draw_boundaries(images)
-        write_images(images, PATH_BOUND, prefix)
+        # Detect clusters and write
+        alg = DBSCAN(eps=DBSCAN_EPS, min_samples=DBSCAN_MIN_SAMPLES)
+        counts, images_cl = get_clusters(images, alg)
+        write_images(images_cl, PATH_CLUSTERS, prefix)
+        write_cluster_counts(counts, PATH_CLUSTERS, prefix)
 
     print("Completed")
 
