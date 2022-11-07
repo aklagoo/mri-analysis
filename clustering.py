@@ -142,6 +142,10 @@ def cluster(image_: np.ndarray, alg: DBSCAN) -> (int, np.ndarray):
     Args:
         image_: A single image.
         alg: An instance of a DBSCAN algorithm object.
+
+    Returns:
+        The count of large clusters and a cluster-masked image extracted from
+        the original image.
     """
     # Initialize the output image.
     image_clustered_ = np.zeros(image_.shape, dtype='uint8')
@@ -180,6 +184,16 @@ def cluster(image_: np.ndarray, alg: DBSCAN) -> (int, np.ndarray):
 
 def get_clusters(images_: List[np.ndarray], alg: DBSCAN) -> (List[int],
                                                              List[np.ndarray]):
+    """Calculates clusters for a batch of images and returns images masked with
+    clustered points and the count of large clusters.
+
+        images_: A batch of images.
+        alg: An instance of a DBSCAN algorithm object.
+
+    Returns:
+        An array of large cluster counts per image and an array of
+        cluster-masked images.
+    """
     images_clustered_ = []
     counts_ = []
     for i, image_ in enumerate(images_):
