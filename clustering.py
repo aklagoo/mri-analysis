@@ -8,6 +8,7 @@ import cv2
 from sklearn.cluster import DBSCAN
 import tqdm
 import csv
+import colorsys
 
 DBSCAN_MIN_SAMPLES = 5
 DBSCAN_EPS = 2
@@ -22,6 +23,19 @@ PARAM_BOUND_THRESHOLD = 5
 
 Point = namedtuple("Point", "x y")
 Size = namedtuple("Size", "width height")
+
+
+def generate_colors(n_):
+    """Generates equally distributed colors."""
+    if not n_:
+        return []
+    colors_ = []
+    unit = 1 / n_
+    for i in range(n_):
+        color_ = colorsys.hsv_to_rgb(unit * i, 0.8, 1)
+        colors_.append(np.array(color_) * 255)
+
+    return colors_
 
 
 def write_images(slices: List[np.ndarray], base_dir: str, prefix: str):
@@ -174,12 +188,28 @@ def cluster(image_: np.ndarray, alg: DBSCAN) -> (int, np.ndarray):
     valid = [cluster_ for cluster_ in clusters_ if len(cluster_) > 135]
 
     # Draw all clusters
+    draw_clusters_color(clusters_, image_clustered_)
+
+    return len(valid), image_clustered_
+
+
+def draw_clusters_source(clusters_, base_image_, image_):
+    """Draws clusters on the base image as a masked version of the source."""
     for cluster_ in clusters_:
         for point in cluster_:
             i, j = point
-            image_clustered_[i, j, :] = image_[i, j, :]
+            base_image_[i, j, :] = image_[i, j, :]
 
-    return len(valid), image_clustered_
+
+def draw_clusters_color(clusters_, base_image_):
+    """Draws clusters on the base image as colored regions."""
+    # Generate colors
+    colors_ = generate_colors(len(clusters_))
+
+    for idx, cluster_ in enumerate(clusters_):
+        for point in cluster_:
+            i, j = point
+            base_image_[i, j, :] = colors_[idx]
 
 
 def get_clusters(images_: List[np.ndarray], alg: DBSCAN) -> (List[int],
