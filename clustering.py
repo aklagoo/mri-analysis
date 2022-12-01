@@ -21,6 +21,10 @@ PATH_TEMPLATE = "./template.png"
 PARAM_FILTER_THRESHOLD = 100
 PARAM_BOUND_THRESHOLD = 5
 
+DRAW_CLUSTERS_WHITE = 0
+DRAW_CLUSTERS_COLOR = 1
+DRAW_CLUSTERS_SOURCE = 2
+
 Point = namedtuple("Point", "x y")
 Size = namedtuple("Size", "width height")
 
@@ -144,7 +148,7 @@ def draw_boundaries(images: List[np.ndarray]):
                              thickness=1, lineType=cv2.LINE_AA)
 
 
-def cluster(image_: np.ndarray, alg: DBSCAN) -> (int, np.ndarray):
+def cluster(image_: np.ndarray, alg: DBSCAN, color: int = DRAW_CLUSTERS_WHITE, draw_valid: bool = True) -> (int, np.ndarray):
     """Detects clusters and returns a filtered image and the count of large
     clusters.
 
@@ -187,8 +191,14 @@ def cluster(image_: np.ndarray, alg: DBSCAN) -> (int, np.ndarray):
     # Count and store valid clusters
     valid = [cluster_ for cluster_ in clusters_ if len(cluster_) > 135]
 
-    # Draw all clusters
-    draw_clusters_color(clusters_, image_clustered_)
+    # Draw clusters
+    clusters_ = valid if draw_valid else clusters_
+    if color == DRAW_CLUSTERS_WHITE:
+        draw_clusters_white(clusters_, image_clustered_)
+    elif color == DRAW_CLUSTERS_COLOR:
+        draw_clusters_color(clusters_, image_clustered_)
+    else:
+        draw_clusters_source(clusters_, image_clustered_)
 
     return len(valid), image_clustered_
 
@@ -212,8 +222,15 @@ def draw_clusters_color(clusters_, base_image_):
             base_image_[i, j, :] = colors_[idx]
 
 
-def get_clusters(images_: List[np.ndarray], alg: DBSCAN) -> (List[int],
-                                                             List[np.ndarray]):
+def draw_clusters_white(clusters_, base_image_):
+    """Draws clusters on the base image as white regions."""
+    for cluster_ in clusters_:
+        for point in cluster_:
+            i, j = point
+            base_image_[i, j, :] = [255, 255, 255]
+
+
+def get_clusters(images_: List[np.ndarray], alg: DBSCAN, color: int = DRAW_CLUSTERS_WHITE, draw_valid: bool = True) -> (List[int], List[np.ndarray]):
     """Calculates clusters for a batch of images and returns images masked with
     clustered points and the count of large clusters.
 
@@ -227,7 +244,7 @@ def get_clusters(images_: List[np.ndarray], alg: DBSCAN) -> (List[int],
     images_clustered_ = []
     counts_ = []
     for i, image_ in enumerate(images_):
-        count_, image_clustered = cluster(image_, alg)
+        count_, image_clustered = cluster(image_, alg, color, draw_valid)
         images_clustered_.append(image_clustered)
         counts_.append(count_)
     return counts_, images_clustered_
