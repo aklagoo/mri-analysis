@@ -1,9 +1,4 @@
-"""
-PROCESS:
-1. Load all CSVs and associated images.
-2. Load dataset and count
-
-"""
+"""Library for training an SVM based on the generated dataset."""
 import cv2
 import glob
 import numpy as np

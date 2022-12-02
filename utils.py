@@ -1,3 +1,4 @@
+"""Utility functions for IO operations, metrics, and pre-processing."""
 import os
 from typing import List
 import numpy as np
@@ -12,13 +13,20 @@ def load_dataset(source: str):
     dataset = {}
     patients = [f"Patient_{i + 1}" for i in range(5)]
     for patient in patients:
-        # Load paths and labels
-        df = pd.read_csv(os.path.join(source, f"{patient}_Labels.csv"))
-        dir_ = os.path.join(source, patient)
-        df['Path'] = [os.path.join(dir_, f"IC_{ic}_thresh.png")
-                      for ic in df['IC']]
+        csv_path = os.path.join(source, f"{patient}_Labels.csv")
+        dir_path = os.path.join(source, patient)
+        df = load_dataset_single(csv_path, dir_path)
         dataset[patient] = df
     return dataset
+
+
+def load_dataset_single(csv_path, dir_path):
+    # Load paths and labels
+    df = pd.read_csv(csv_path)
+    df['Path'] = [os.path.join(dir_path, f"IC_{ic}_thresh.png")
+                  for ic in df['IC']]
+    df['Label'] = [1 if d > 0 else 0 for d in df['Label']]
+    return df
 
 
 def preprocess_batch(imgs: List[np.ndarray]) -> np.ndarray:

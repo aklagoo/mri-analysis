@@ -1,40 +1,35 @@
-import glob
-import os
-import tqdm
-import clustering
-from cv2 import imread
+import csv
+import cv2
+import joblib
 from sklearn.cluster import DBSCAN
-
-
-# Output paths
-PATH_SLICES = "./Slices"
-PATH_BOUND = "./Boundaries"
-PATH_CLUSTERS = "./Clusters"
+from classification import PATH_MODEL, process_patient
+from clustering import PATH_TEMPLATE, DBSCAN_EPS, DBSCAN_MIN_SAMPLES
+from utils import load_dataset_single, calculate_metrics
 
 
 if __name__ == '__main__':
-    # List all files
-    files = glob.glob("./testPatient/*_thresh.png")
+    # Initialize objects
+    df = load_dataset_single('test_Labels.csv',
+                             'testPatient')
+    clf = joblib.load(PATH_MODEL)
+    template = cv2.imread(PATH_TEMPLATE)
+    alg = DBSCAN(eps=DBSCAN_EPS, min_samples=DBSCAN_MIN_SAMPLES)
 
-    # Load the template
-    template = imread("./template.png")
+    # Calculate metrics
+    preds = process_patient(df, alg, clf, template, 0.55)
+    metrics = calculate_metrics(preds, df['Label'])
 
-    # Process each image
-    print("Processing images...")
-    for file in tqdm.tqdm(files):
-        # Prepare output path
-        a, i, _ = os.path.basename(file)[:-4].split('_')
-        prefix = "{0}_{1:03d}".format(a, int(i))
+    # Write results
+    df['Label'] = preds
+    df.to_csv('Results.csv', columns=['IC', 'Label'], index=False)
 
-        # Generate slices and write
-        images = clustering.get_filtered_slices(file, template)
-        clustering.write_images(images, PATH_SLICES, prefix)
-
-        # Detect clusters and write
-        alg = DBSCAN(eps=clustering.DBSCAN_EPS,
-                     min_samples=clustering.DBSCAN_MIN_SAMPLES)
-        counts, images_cl = clustering.get_clusters(images, alg)
-        clustering.write_images(images_cl, PATH_CLUSTERS, prefix)
-        clustering.write_cluster_counts(counts, PATH_CLUSTERS, prefix)
-
-    print("Completed.")
+    # Write metrics
+    rows = [
+        ["Accuracy", metrics['accuracy']],
+        ["Precision", metrics['precision']],
+        ["Sensitivity", metrics['sensitivity']],
+        ["Specificity", metrics['specificity']],
+    ]
+    with open("Metrics.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
