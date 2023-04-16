@@ -2,9 +2,8 @@
 import joblib
 import cv2
 from sklearn.cluster import DBSCAN
-import clustering as cls
 import tqdm
-import utils
+from lib import utils, clustering as cls
 
 SOURCE = "./PatientData-2/PatientData"
 PATH_MODEL = "./svm.joblib"

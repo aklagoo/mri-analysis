@@ -3,15 +3,15 @@ import os
 import cv2
 import tqdm
 from sklearn.cluster import DBSCAN
-from clustering import get_filtered_slices, get_clusters, DBSCAN_MIN_SAMPLES,\
+from lib.clustering import get_filtered_slices, get_clusters, DBSCAN_MIN_SAMPLES,\
     DBSCAN_EPS
-from utils import load_dataset
+from lib.utils import load_dataset
 
 SOURCE = "./PatientData-2/PatientData"
 PATH_OUTPUT = "./Dataset"
 PATH_NOISE = "Noise"
 PATH_UNCLASSIFIED = "Unclassified"
-PATH_TEMPLATE = "./template.png"
+PATH_TEMPLATE = "../data/template.png"
 
 
 def process(df, template, algorithm, count):

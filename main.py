@@ -2,9 +2,9 @@ import csv
 import cv2
 import joblib
 from sklearn.cluster import DBSCAN
-from classification import PATH_MODEL, process_patient
-from clustering import PATH_TEMPLATE, DBSCAN_EPS, DBSCAN_MIN_SAMPLES
-from utils import load_dataset_single, calculate_metrics
+from lib.classification import PATH_MODEL, process_patient
+from lib.clustering import PATH_TEMPLATE, DBSCAN_EPS, DBSCAN_MIN_SAMPLES
+from lib.utils import load_dataset_single, calculate_metrics
 
 
 if __name__ == '__main__':

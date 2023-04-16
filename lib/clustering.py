@@ -16,7 +16,7 @@ DBSCAN_EPS = 2
 PATH_SLICES = "./Output/Slices"
 PATH_BOUND = "./Output/Boundaries"
 PATH_CLUSTERS = "./Output/Clusters"
-PATH_TEMPLATE = "./template.png"
+PATH_TEMPLATE = "../data/template.png"
 
 PARAM_FILTER_THRESHOLD = 100
 PARAM_BOUND_THRESHOLD = 5
